@@ -17,13 +17,8 @@ static const Color tileColors[4] = {
 
 int main(void)
 {
-    // Compute window dimensions based on grid geometry
-    const int gridWidth = gridColumns * tileSize + (gridColumns - 1) * tileSpacing;
-    const int gridHeight = gridRows * tileSize + (gridRows - 1) * tileSpacing;
-    const int windowWidth = gridMargin * 2 + gridWidth;
-    const int windowHeight = gridMargin * 2 + gridHeight;
-
-    InitWindow(windowWidth, windowHeight, "Match-3 Prototype");
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    InitWindow(1920, 1080, "Open Match");
     SetTargetFPS(60);
 
     // Initialize grid with 4 different tile types (0..3)
@@ -35,15 +30,27 @@ int main(void)
         }
     }
 
+    // Precompute board dimensions (tiles + spacing + margins)
+    const int gridWidth = gridColumns * tileSize + (gridColumns - 1) * tileSpacing;
+    const int gridHeight = gridRows * tileSize + (gridRows - 1) * tileSpacing;
+    const int boardWidth = gridMargin * 2 + gridWidth;
+    const int boardHeight = gridMargin * 2 + gridHeight;
+
     while (!WindowShouldClose()) {
         BeginDrawing();
         ClearBackground((Color){ 24, 24, 32, 255 });
 
+        // Compute offsets to keep the board centered for the current window size
+        const int windowWidth = GetScreenWidth();
+        const int windowHeight = GetScreenHeight();
+        const int offsetX = (windowWidth - boardWidth) / 2;
+        const int offsetY = (windowHeight - boardHeight) / 2;
+
         // Draw grid of tiles
         for (int row = 0; row < gridRows; row++) {
             for (int col = 0; col < gridColumns; col++) {
-                const int x = gridMargin + col * (tileSize + tileSpacing);
-                const int y = gridMargin + row * (tileSize + tileSpacing);
+                const int x = offsetX + gridMargin + col * (tileSize + tileSpacing);
+                const int y = offsetY + gridMargin + row * (tileSize + tileSpacing);
                 const int tileType = tileTypeByCell[row][col];
                 const Color color = tileColors[tileType % 4];
                 DrawRectangle(x, y, tileSize, tileSize, color);
