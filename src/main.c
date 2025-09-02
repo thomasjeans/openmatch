@@ -39,9 +39,10 @@ int main(void)
     const int boardWidth = gridMargin * 2 + gridWidth;
     const int boardHeight = gridMargin * 2 + gridHeight;
 
-    // Track the tile that is currently pressed (if any)
+    // Track the tile that is currently pressed/dragged (if any)
     int pressedRow = -1;
     int pressedCol = -1;
+    int movedOutsideOriginal = 0; // becomes true once cursor leaves original tile rect while pressed
 
     while (!WindowShouldClose()) {
         BeginDrawing();
@@ -80,7 +81,7 @@ int main(void)
             if (hoveredRow != -1 && hoveredCol != -1) {
                 pressedRow = hoveredRow;
                 pressedCol = hoveredCol;
-                
+                movedOutsideOriginal = 0;
             }
         }
 
@@ -89,12 +90,37 @@ int main(void)
             if (hoveredRow != -1 && hoveredCol != -1) {
                 pressedRow = hoveredRow;
                 pressedCol = hoveredCol;
+                movedOutsideOriginal = 0;
+            }
+        }
+
+        // Update drag state based on mouse leaving the original tile rect
+        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && pressedRow != -1 && pressedCol != -1) {
+            const int pressedX = offsetX + gridMargin + pressedCol * (tileSize + tileSpacing);
+            const int pressedY = offsetY + gridMargin + pressedRow * (tileSize + tileSpacing);
+            if ((mouse.x < pressedX) || (mouse.x >= pressedX + tileSize) ||
+                (mouse.y < pressedY) || (mouse.y >= pressedY + tileSize)) {
+                movedOutsideOriginal = 1;
             }
         }
 
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+            if (pressedRow != -1 && pressedCol != -1) {
+                // On release, if dragged outside and over adjacent tile, perform swap
+                if (movedOutsideOriginal && hoveredRow != -1 && hoveredCol != -1) {
+                    const int drow = hoveredRow - pressedRow;
+                    const int dcol = hoveredCol - pressedCol;
+                    if ((drow*drow + dcol*dcol == 1) || (drow == 0 && (dcol == 1 || dcol == -1)) || (dcol == 0 && (drow == 1 || drow == -1))) {
+                        // Manhattan distance 1 → adjacent
+                        int tmp = tileTypeByCell[pressedRow][pressedCol];
+                        tileTypeByCell[pressedRow][pressedCol] = tileTypeByCell[hoveredRow][hoveredCol];
+                        tileTypeByCell[hoveredRow][hoveredCol] = tmp;
+                    }
+                }
+            }
             pressedRow = -1;
             pressedCol = -1;
+            movedOutsideOriginal = 0;
         }
 
         // Draw grid of tiles
@@ -106,22 +132,34 @@ int main(void)
                 const Color color = tileColors[tileType % 4];
                 const bool isPressedTile = (row == pressedRow && col == pressedCol && IsMouseButtonDown(MOUSE_BUTTON_LEFT));
                 if (isPressedTile) {
-                    const float scale = 1.14f; // slightly larger than before
-                    const float cx = (float)x + (float)tileSize * 0.5f;
-                    const float cy = (float)y + (float)tileSize * 0.5f;
-
-                    Rectangle rec = { cx, cy, (float)tileSize * scale, (float)tileSize * scale };
-                    Vector2 origin = { rec.width * 0.5f, rec.height * 0.5f };
-
-                    // Shadow behind, slightly offset to bottom-right
-                    Rectangle shadowRec = rec; shadowRec.x += 4.0f; shadowRec.y += 6.0f;
-                    DrawRectanglePro(shadowRec, origin, 0.0f, (Color){ 0, 0, 0, 120 });
-                    // Tile scaled up, centered on its original center
-                    DrawRectanglePro(rec, origin, 0.0f, color);
+                    if (movedOutsideOriginal) {
+                        // While dragging outside original tile, skip drawing here; we'll draw on top at cursor
+                    } else {
+                        const float scale = 1.14f;
+                        const float cx = (float)x + (float)tileSize * 0.5f;
+                        const float cy = (float)y + (float)tileSize * 0.5f;
+                        Rectangle rec = { cx, cy, (float)tileSize * scale, (float)tileSize * scale };
+                        Vector2 origin = { rec.width * 0.5f, rec.height * 0.5f };
+                        Rectangle shadowRec = rec; shadowRec.x += 4.0f; shadowRec.y += 6.0f;
+                        DrawRectanglePro(shadowRec, origin, 0.0f, (Color){ 0, 0, 0, 120 });
+                        DrawRectanglePro(rec, origin, 0.0f, color);
+                    }
                 } else {
                     DrawRectangle(x, y, tileSize, tileSize, color);
                 }
             }
+        }
+
+        // If dragging, render the pressed tile centered under cursor on top
+        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && pressedRow != -1 && pressedCol != -1 && movedOutsideOriginal) {
+            const int tileType = tileTypeByCell[pressedRow][pressedCol];
+            const Color color = tileColors[tileType % 4];
+            const float scale = 1.14f;
+            Rectangle rec = { (float)mouse.x, (float)mouse.y, (float)tileSize * scale, (float)tileSize * scale };
+            Vector2 origin = { rec.width * 0.5f, rec.height * 0.5f };
+            Rectangle shadowRec = rec; shadowRec.x += 4.0f; shadowRec.y += 6.0f;
+            DrawRectanglePro(shadowRec, origin, 0.0f, (Color){ 0, 0, 0, 120 });
+            DrawRectanglePro(rec, origin, 0.0f, color);
         }
 
         EndDrawing();

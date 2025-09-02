@@ -15,3 +15,4 @@
  - Align mouse coordinates with render DPI scaling on initial launch for correct detection
  - Centered scale-up effect for pressed tiles with improved shadow
  - macOS menu now shows "Open Match" by naming binary with space in makefile
+ - Add drag-to-swap interaction: drag raised tile to adjacent tile to swap; invalid drops revert
