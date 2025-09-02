@@ -14,3 +14,4 @@
  - Correct centering on initial launch by using consistent window dimensions
  - Align mouse coordinates with render DPI scaling on initial launch for correct detection
  - Centered scale-up effect for pressed tiles with improved shadow
+ - macOS menu now shows "Open Match" by naming binary with space in makefile

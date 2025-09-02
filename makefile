@@ -5,7 +5,7 @@ CFLAGS ?= -O2 -Wall -Wextra -Wshadow -Wconversion -Wundef
 LDFLAGS ?=
 
 SRC := src/main.c
-OUT := bin/game
+OUT := bin/Open\ Match
 
 # Detect platform for default libs when pkg-config is not available
 UNAME_S := $(shell uname -s)
@@ -42,7 +42,7 @@ dirs:
 	@mkdir -p $(dir $(OUT))
 
 $(OUT): $(SRC) | dirs
-	$(CC) $(ALL_CFLAGS) $^ -o $@ $(ALL_LIBS)
+	$(CC) $(ALL_CFLAGS) $^ -o $(OUT) $(ALL_LIBS)
 
 run: $(OUT)
 	./$(OUT)
