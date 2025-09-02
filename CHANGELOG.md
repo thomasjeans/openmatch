@@ -16,3 +16,6 @@
  - Centered scale-up effect for pressed tiles with improved shadow
  - macOS menu now shows "Open Match" by naming binary with space in makefile
  - Add drag-to-swap interaction: drag raised tile to adjacent tile to swap; invalid drops revert
+ - Implement match-3 rules: swaps only succeed if they create a match; matched tiles clear, gravity drops tiles down, and new tiles fill from the top (with cascading)
+ - Ensure initial board is match-free by resolving any starting runs
+ - Switch to no-match initializer to generate a board without initial matches (no initial cascades)

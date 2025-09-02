@@ -14,6 +14,105 @@ static const Color tileColors[4] = {
     YELLOW
 };
 
+// Match-3 helpers
+static int detectMatches(const int tiles[gridRows][gridColumns], int marked[gridRows][gridColumns])
+{
+    // Clear marked
+    int totalMarked = 0;
+    for (int r = 0; r < gridRows; r++) {
+        for (int c = 0; c < gridColumns; c++) {
+            marked[r][c] = 0;
+        }
+    }
+
+    // Horizontal runs
+    for (int r = 0; r < gridRows; r++) {
+        int runStart = 0;
+        while (runStart < gridColumns) {
+            const int type = tiles[r][runStart];
+            int runEnd = runStart + 1;
+            while (runEnd < gridColumns && tiles[r][runEnd] == type) {
+                runEnd++;
+            }
+            const int runLength = runEnd - runStart;
+            if (type >= 0 && runLength >= 3) {
+                for (int c = runStart; c < runEnd; c++) {
+                    if (!marked[r][c]) { marked[r][c] = 1; totalMarked++; }
+                }
+            }
+            runStart = runEnd;
+        }
+    }
+
+    // Vertical runs
+    for (int c = 0; c < gridColumns; c++) {
+        int runStart = 0;
+        while (runStart < gridRows) {
+            const int type = tiles[runStart][c];
+            int runEnd = runStart + 1;
+            while (runEnd < gridRows && tiles[runEnd][c] == type) {
+                runEnd++;
+            }
+            const int runLength = runEnd - runStart;
+            if (type >= 0 && runLength >= 3) {
+                for (int r = runStart; r < runEnd; r++) {
+                    if (!marked[r][c]) { marked[r][c] = 1; totalMarked++; }
+                }
+            }
+            runStart = runEnd;
+        }
+    }
+
+    return totalMarked;
+}
+
+static void removeMatchesAndCollapse(int tiles[gridRows][gridColumns], const int marked[gridRows][gridColumns])
+{
+    for (int c = 0; c < gridColumns; c++) {
+        int writeRow = gridRows - 1;
+        for (int r = gridRows - 1; r >= 0; r--) {
+            if (!marked[r][c]) {
+                tiles[writeRow][c] = tiles[r][c];
+                writeRow--;
+            }
+        }
+        // Fill remaining with new random tiles at the top
+        for (int r = writeRow; r >= 0; r--) {
+            tiles[r][c] = GetRandomValue(0, 3);
+        }
+    }
+}
+
+static int resolveBoard(int tiles[gridRows][gridColumns])
+{
+    int totalCleared = 0;
+    while (1) {
+        int marked[gridRows][gridColumns];
+        const int cleared = detectMatches(tiles, marked);
+        if (cleared <= 0) break;
+        totalCleared += cleared;
+        removeMatchesAndCollapse(tiles, marked);
+    }
+    return totalCleared;
+}
+
+static void initBoardNoMatches(int tiles[gridRows][gridColumns])
+{
+    for (int r = 0; r < gridRows; r++) {
+        for (int c = 0; c < gridColumns; c++) {
+            while (1) {
+                int t = GetRandomValue(0, 3);
+                int invalid = 0;
+                // Check horizontal: ensure not forming 3 with the 2 to the left
+                if (c >= 2 && tiles[r][c-1] == t && tiles[r][c-2] == t) invalid = 1;
+                // Check vertical: ensure not forming 3 with the 2 above
+                if (!invalid && r >= 2 && tiles[r-1][c] == t && tiles[r-2][c] == t) invalid = 1;
+                if (!invalid) { tiles[r][c] = t; break; }
+            }
+        }
+    }
+}
+
 int main(void)
 {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
@@ -24,14 +123,10 @@ int main(void)
     SetMouseScale(1.0f, 1.0f);
     SetTargetFPS(60);
 
-    // Initialize grid with 4 different tile types (0..3)
+    // Initialize grid with 4 different tile types (0..3) without initial matches
     srand((unsigned int)time(NULL));
     int tileTypeByCell[gridRows][gridColumns];
-    for (int row = 0; row < gridRows; row++) {
-        for (int col = 0; col < gridColumns; col++) {
-            tileTypeByCell[row][col] = GetRandomValue(0, 3);
-        }
-    }
+    initBoardNoMatches(tileTypeByCell);
 
     // Compute board dimensions (tiles + spacing + margins)
     const int gridWidth = gridColumns * tileSize + (gridColumns - 1) * tileSpacing;
@@ -106,15 +201,25 @@ int main(void)
 
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             if (pressedRow != -1 && pressedCol != -1) {
-                // On release, if dragged outside and over adjacent tile, perform swap
+                // If dragged outside and over an adjacent tile, attempt swap
                 if (movedOutsideOriginal && hoveredRow != -1 && hoveredCol != -1) {
                     const int drow = hoveredRow - pressedRow;
                     const int dcol = hoveredCol - pressedCol;
-                    if ((drow*drow + dcol*dcol == 1) || (drow == 0 && (dcol == 1 || dcol == -1)) || (dcol == 0 && (drow == 1 || drow == -1))) {
-                        // Manhattan distance 1 → adjacent
+                    const int manhattan = (drow < 0 ? -drow : drow) + (dcol < 0 ? -dcol : dcol);
+                    if (manhattan == 1) {
+                        // Try swap
                         int tmp = tileTypeByCell[pressedRow][pressedCol];
                         tileTypeByCell[pressedRow][pressedCol] = tileTypeByCell[hoveredRow][hoveredCol];
                         tileTypeByCell[hoveredRow][hoveredCol] = tmp;
+
+                        // Validate swap by resolving matches; revert if no matches cleared
+                        const int cleared = resolveBoard(tileTypeByCell);
+                        if (cleared <= 0) {
+                            // Revert swap
+                            tmp = tileTypeByCell[pressedRow][pressedCol];
+                            tileTypeByCell[pressedRow][pressedCol] = tileTypeByCell[hoveredRow][hoveredCol];
+                            tileTypeByCell[hoveredRow][hoveredCol] = tmp;
+                        }
                     }
                 }
             }
