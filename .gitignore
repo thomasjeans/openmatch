@@ -1,0 +1,23 @@
+bin/
+build/
+
+# Objects and libraries
+*.o
+*.a
+*.so
+*.dll
+*.dylib
+
+# macOS
+*.dSYM/
+.DS_Store
+
+# IDE/editor
+.vscode/
+.idea/
+*.code-workspace
+
+# Misc
+compile_commands.json
+
+
