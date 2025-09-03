@@ -19,3 +19,4 @@
  - Implement match-3 rules: swaps only succeed if they create a match; matched tiles clear, gravity drops tiles down, and new tiles fill from the top (with cascading)
  - Ensure initial board is match-free by resolving any starting runs
  - Switch to no-match initializer to generate a board without initial matches (no initial cascades)
+ - Add particle burst effects when tiles are cleared by matches
